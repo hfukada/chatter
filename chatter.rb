@@ -36,9 +36,9 @@ class Chatter
 
     def get_messages(target)
         coll = @db.collection('msg_queue')
-        messages = coll.find({'user'=>target})
-        coll.remove({'user' => target})
-        user = @db.collection('users').find({ 'user' => target})
+        messages = coll.find({'_id'=>target})
+        coll.remove({'_id' => target})
+        user = @db.collection('users').find({ '_id' => target})
         @db.collection('users').update({'_id' => user['_id']},{'exp_time' => Time.now.to_i + 300}) 
         messages
     end
@@ -66,13 +66,13 @@ class Chatter
     def find_local_users(lat, lon)
         @db.collection('users').find({
             gpos: {
-                '$near': {
-                    '$geometry': {
+                '$near' => {
+                    '$geometry' => {
                         type: 'Point',
                         coordinates: [lat, lon]
                     },
 
-                    '$maxDistance': 500
+                    '$maxDistance' => 500
                 }
             }
         })
@@ -129,13 +129,13 @@ configure do
     set :public_folder, File.dirname(__FILE__) + '/pub'
 end
 
-get '/getmessages/:id' do 
+get '/getmessages/:id' do |id|
     # get list of messages from mongo
-    [{ sender: 'jbury', message: 'I r pleb'}].to_json
+    chat.get_messages(id).to_json
 end
 
-post '/broadcast/:id' do 
-
+post '/broadcast/:id/:lat/:lon/:message' do |id, lat, lon, message|
+    chat.broadcast(id, lat, lon, message, Time.now)
 end
 
 get '/connect/:name/:lat/:long' do |name, latitude, longitude|
