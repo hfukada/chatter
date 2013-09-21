@@ -1,5 +1,7 @@
 require 'rubygems'
 require 'mongo'
+require 'sinatra'
+require 'time'
 
 include Mongo
 
@@ -32,28 +34,28 @@ class Chatter
         @db.collection('users').find({name => username}).nil?
     end
 
-    def get_messages(target)
+    def get_messages(id)
         coll = @db.collection('msg_queue')
         coll.find({'user'=>target})
         coll.remove({'user' => target})
         @db.collection('users').update({'user'=>targeti},{'exp_time' => Time.now.to_i + 300}) 
     end
 
-    def broadcast(users, from, msg, timestamp)
+    def broadcast(id, users, from, msg, timestamp)
         users.each{|user|
-            send_message(user, from, msg, timestamp)
+            send_message(id, user, from, msg, timestamp)
         }
     end
 
-    def send_message(to, from, msg, timestamp)
+    def send_message(id, to, from, msg, timestamp)
         coll = @db.collection('msg_queue')
-        coll.insert({"to" => to, "from" => from, "msg" => msg, "timestamp"=>timestamp})
+        coll.insert({"_id" => id, "to" => to, "from" => from, "msg" => msg, "timestamp"=>timestamp})
     end
 
-    def connect(username, lat, lon)
+    def connect(id, username, lat, lon)
         coll = @db.collection('users')
         if !check_user_exists(username)
-            coll.insert({'name' => username, 'lat' => lat, 'lon' => lon, 'exp_time' => Time.now.to_i+300})
+            coll.insert({'_id' => id, 'name' => username, 'lat' => lat, 'lon' => lon, 'exp_time' => Time.now.to_i+300})
             return 0,"#{username} is ready to go"
         else
             puts "#{username} already exists"
@@ -61,7 +63,27 @@ class Chatter
         end
     end
 
-    def 
+    def clean_users_collection()
+        puts "cleaning"
+        coll = @db.collection('users')
+        users = coll.find()
+        puts "got users"
+        users.each{|user|
+            if  user.inspect['exp_time'] < Time.now.to_i
+                puts "4cleaning..."
+                coll.remove({'_id' => user["_id"]})
+                puts "5cleaning..."
+            end
+        }
+        puts "end clean"
+    end
 end
+
 chat = Chatter.new
+Thread.new{
+    loop do
+        chat.clean_users_collection
+        sleep 2
+    end
+}
 puts "STARTING GEOCHATTER"
