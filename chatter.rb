@@ -34,11 +34,13 @@ class Chatter
         @db.collection('users').find({name => username}).nil?
     end
 
-    def get_messages(id)
+    def get_messages(target)
         coll = @db.collection('msg_queue')
-        coll.find({'user'=>target})
+        messages = coll.find({'user'=>target})
         coll.remove({'user' => target})
-        @db.collection('users').update({'user'=>targeti},{'exp_time' => Time.now.to_i + 300}) 
+        user = @db.collection('users').find({ 'user' => target})
+        @db.collection('users').update({'_id' => user['_id']},{'exp_time' => Time.now.to_i + 300}) 
+        messages
     end
 
     def broadcast(id, users, from, msg, timestamp)
@@ -70,9 +72,7 @@ class Chatter
         puts "got users"
         users.each{|user|
             if  user.inspect['exp_time'] < Time.now.to_i
-                puts "4cleaning..."
                 coll.remove({'_id' => user["_id"]})
-                puts "5cleaning..."
             end
         }
         puts "end clean"
@@ -83,7 +83,7 @@ chat = Chatter.new
 Thread.new{
     loop do
         chat.clean_users_collection
-        sleep 2
+        sleep 25
     end
 }
 puts "STARTING GEOCHATTER"
