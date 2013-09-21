@@ -31,7 +31,7 @@ class Chatter
 
     # check if the username has been taken already
     def check_user_exists(username)
-        @db.collection('users').find({name => username}).nil?
+        @db.collection('users').find({'name' => username}).nil?
     end
 
     def get_messages(target)
@@ -47,15 +47,35 @@ class Chatter
         @db.collection('users').update({'_id' => id}, { gpos: { type:  'Point', coordinates: [lat, lon] }})
     end
 
-    def broadcast(id, users, from, msg, timestamp)
+    def broadcast_to(id, users, msg, timestamp)
         users.each{|user|
             send_message(id, user, from, msg, timestamp)
         }
     end
 
+    def broadcast(id, lat, lon, msg, timestamp)
+        users = find_local_users(lat, lon).map {|user| user[:id] }
+        broadcast_to(id, users, msg, timestamp)
+    end
+
     def send_message(id, to, from, msg, timestamp)
         coll = @db.collection('msg_queue')
-        coll.insert({"_id" => id, "to" => to, "from" => from, "msg" => msg, "timestamp"=>timestamp})
+        coll.insert({"_id" => id, "to" => to, "msg" => msg, "timestamp"=>timestamp})
+    end
+
+    def find_local_users(lat, lon)
+        @db.collection('users').find({
+            gpos: {
+                '$near': {
+                    '$geometry': {
+                        type: 'Point',
+                        coordinates: [lat, lon]
+                    },
+
+                    '$maxDistance': 500
+                }
+            }
+        })
     end
 
     def connect(id, username, lat, lon)
@@ -130,3 +150,6 @@ get '/connect/:name/:lat/:long' do |name, latitude, longitude|
     return { status: 'OK', token: idToken }
 end
 
+get '/update_gpos/:id/:lat/:long' do |id, lat, lon|
+    chat.update_gpos(id, lat, lon)
+end
