@@ -43,6 +43,10 @@ class Chatter
         messages
     end
 
+    def update_gpos(id, lat, lon)
+        @db.collection('users').update({'_id' => id}, { gpos: { type:  'Point', coordinates: [lat, lon] }})
+    end
+
     def broadcast(id, users, from, msg, timestamp)
         users.each{|user|
             send_message(id, user, from, msg, timestamp)
@@ -57,7 +61,13 @@ class Chatter
     def connect(id, username, lat, lon)
         coll = @db.collection('users')
         if !check_user_exists(username)
-            coll.insert({'_id' => id, 'name' => username, 'lat' => lat, 'lon' => lon, 'exp_time' => Time.now.to_i+300})
+            coll.insert({
+                '_id' => id, 
+                'name' => username, 
+                'gpos' => { 'type' => 'Point',
+                            'coordinates' => [lat, lon]},
+                'exp_time' => Time.now.to_i+300})
+
             return 0,"#{username} is ready to go"
         else
             puts "#{username} already exists"
@@ -86,4 +96,37 @@ Thread.new{
         sleep 25
     end
 }
-puts "STARTING GEOCHATTER"
+
+def __entry
+    puts "STARTING GEOCHATTER"
+
+    users = @db.collection('users')
+    users.ensure_index(:gpos => Mongo::GEO2DSPHERE)
+end
+
+configure do
+    set :port => 80
+    set :public_folder, File.dirname(__FILE__) + '/pub'
+end
+
+get '/getmessages/:id' do 
+    # get list of messages from mongo
+    [{ sender: 'jbury', message: 'I r pleb'}].to_json
+end
+
+post '/broadcast/:id' do 
+
+end
+
+get '/connect/:name/:lat/:long' do |name, latitude, longitude|
+    idToken = Digest::SHA256.new.hexdigest "#{name}#{Time.now}"
+    e,m = chat.connect(idToken, name, latitude, longitude)
+
+    if e != 0 
+        puts m 
+        return { status: 'ERR', message: m }
+    end
+
+    return { status: 'OK', token: idToken }
+end
+
