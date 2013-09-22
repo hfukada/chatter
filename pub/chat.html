@@ -1,0 +1,37 @@
+
+    <script type="text/javascript">
+        $(function () {
+            $('#Send').on('click', function () {
+                //$('#Chatbox').append($('#Sendbox').val()+"\n");
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    $.post('//localhost/broadcast/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude + '/' + $('#Sendbox').val(), function(content) {
+                        alert(content);
+                    });
+                });
+            });
+        });
+        window.setInterval(function(){
+            $.get('//localhost/getmessages/' + document.idToken, function(content) {
+                //alert(content);
+            });
+        }, 1000);
+    </script>
+	</head>
+
+    <body class="wholePage"> 
+    <h1 class="center"> Chatter for area </h1>
+        <div id="container" class="rounded">
+            <div class="preContainer">
+			<pre id="Chatbox" class="preStyle"></pre>
+            </div>
+            <div class="input-group" id="input-div" >
+                <form name="chatbox">
+                    <input id="Sendbox" type="text" class="input-block-level form-control, inputBox" placeholder="Text">
+                    <button id="Send" class="btn btn-large btn-primary inputButton" type="button">Send</button>
+                </form>
+            </div>
+
+            <script src="//code.jquery.com/jquery.js"></script>
+            <!-- Include all compiled plugins (below), or include individual files as needed -->
+            <script src="js/bootstrap.min.js"></script>
+        </div>

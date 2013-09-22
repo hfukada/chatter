@@ -2,6 +2,8 @@ require 'rubygems'
 require 'mongo'
 require 'sinatra'
 require 'time'
+require 'json'
+require 'yaml'
 
 include Mongo
 
@@ -12,6 +14,9 @@ class Chatter
 
         puts "Connecting to #{host}:#{port}"
         @db = MongoClient.new(host, port).db('mydb')
+
+        users = @db.collection('users')
+        users.ensure_index({:gpos => Mongo::GEO2DSPHERE})
 
         # Erase all records from collection, if any
         # coll.remove
@@ -35,12 +40,18 @@ class Chatter
     end
 
     def get_messages(target)
+        users = @db.collection('users').find({ 'user' => target })
+
+        if users.count != 1
+            return []
+        end
+
         coll = @db.collection('msg_queue')
         messages = coll.find({'user'=>target})
         coll.remove({'user' => target})
-        user = @db.collection('users').find({ 'user' => target})
+        user = users.first
         @db.collection('users').update({'user' => user['user']},{'exp_time' => Time.now.to_i + 300}) 
-        messages
+        messages.map {|m| m.to_json }
     end
 
     def update_gpos(id, lat, lon)
@@ -82,10 +93,10 @@ class Chatter
         coll = @db.collection('users')
         if !check_user_exists(username)
             coll.insert({
-                '_id' => id, 
+                'user' => id, 
                 'name' => username, 
-                'gpos' => { 'type' => 'Point',
-                            'coordinates' => [lat, lon]},
+                'gpos' => { type: 'Point',
+                            coordinates: [0, 0]},
                 'exp_time' => Time.now.to_i+300})
 
             return 0,"#{username} is ready to go"
@@ -109,10 +120,9 @@ class Chatter
     end
 end
 
-
+chat = Chatter.new
 
 def __entry
-    chat = Chatter.new
     Thread.new{
         loop do
             chat.clean_users_collection
@@ -120,9 +130,6 @@ def __entry
     end
     }
     puts "STARTING GEOCHATTER"
-
-    users = @db.collection('users')
-    users.ensure_index(:gpos => Mongo::GEO2DSPHERE)
 end
 
 configure do
@@ -135,7 +142,7 @@ get '/getmessages/:id' do |id|
     chat.get_messages(id).to_json
 end
 
-post '/broadcast/:id/:lat/:lon/:message' do |id, lat, lon, message|
+get '/broadcast/:id/:lat/:lon/:message' do |id, lat, lon, message|
     chat.broadcast(id, lat, lon, message, Time.now)
 end
 
@@ -145,14 +152,14 @@ get '/connect/:name/:lat/:long' do |name, latitude, longitude|
 
     if e != 0 
         puts m 
-        return { status: 'ERR', message: m }
+        return { status: 'ERR', message: m }.to_json
     end
 
-    return { status: 'OK', token: idToken }
+    return { status: 'OK', token: idToken }.to_json
 end
 
 get '/update_gpos/:id/:lat/:long' do |id, lat, lon|
     chat.update_gpos(id, lat, lon)
 end
 
-_entry
+__entry
