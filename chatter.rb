@@ -41,37 +41,47 @@ class Chatter
 
     def get_messages(target)
         users = @db.collection('users').find({ 'user' => target })
+        puts users
 
-        if users.count != 1
+        if users.count < 1
             return []
         end
 
         coll = @db.collection('msg_queue')
-        messages = coll.find({'user'=>target})
+        messages = coll.find({'to'=>target})
+        
+        messages.each{|m| m.each{|i|  puts i.to_json}}
         coll.remove({'user' => target})
         user = users.first
         @db.collection('users').update({'user' => user['user']},{'exp_time' => Time.now.to_i + 300}) 
-        messages.map {|m| m.to_json }
+        puts messages
+        i = []
+        messages.map {|m|  i += m.to_json }
+        return i
     end
 
     def update_gpos(id, lat, lon)
-        @db.collection('users').update({'_id' => id}, { gpos: { type:  'Point', coordinates: [lat, lon] }})
+        @db.collection('users').update({'user' => id}, { 'gpos' => { 'type'=>  'Point', 'coordinates' => [lat, lon] }})
     end
 
     def broadcast_to(id, users, msg, timestamp)
+        from = @db.collection('users').find({'user'=>id}).first
         users.each{|user|
             send_message(id, user, from, msg, timestamp)
         }
     end
 
     def broadcast(id, lat, lon, msg, timestamp)
-        users = find_local_users(lat, lon).map {|user| user[:id] }
+        users = find_local_users(lat, lon).map {|user| user['user'] }
+        puts "wat"
+        puts users
+        users.map{ |m| puts m.to_json}
         broadcast_to(id, users, msg, timestamp)
     end
 
     def send_message(id, to, from, msg, timestamp)
         coll = @db.collection('msg_queue')
-        coll.insert({"_id" => id, "to" => to, "msg" => msg, "timestamp"=>timestamp})
+        coll.insert({"user" => id, "to" => to, "msg" => msg, "timestamp"=>timestamp})
     end
 
     def find_local_users(lat, lon)
@@ -79,8 +89,8 @@ class Chatter
             gpos: {
                 '$near' => {
                     '$geometry' => {
-                        type: 'Point',
-                        coordinates: [lat, lon]
+                        'type' => 'Point',
+                        'coordinates' => [lat, lon]
                     },
 
                     '$maxDistance' => 500
@@ -92,13 +102,14 @@ class Chatter
     def connect(id, username, lat, lon)
         coll = @db.collection('users')
         if !check_user_exists(username)
-            coll.insert({
-                'user' => id, 
-                'name' => username, 
-                'gpos' => { type: 'Point',
-                            coordinates: [0, 0]},
-                'exp_time' => Time.now.to_i+300})
-
+           # coll.insert({
+           #     'user' => id, 
+           #     'name' => username, 
+           #     'gpos' => { 'type' => 'Point',
+           #                 'coordinates' => [lat, lon]},
+           #     'exp_time' => Time.now.to_i+300})
+            coll.insert({'user' => id, 'name' => username,'gpos' => { 'type' => 'Point', 'coordinates' => [lat, lon]},'exp_time' => Time.now.to_i+300})
+            puts "good"
             return 0,"#{username} is ready to go"
         else
             puts "#{username} already exists"
@@ -113,7 +124,7 @@ class Chatter
         puts "got users"
         users.each{|user|
             if  user.inspect['exp_time'] < Time.now.to_i
-                coll.remove({'_id' => user["_id"]})
+                coll.remove({'user' => user["user"]})
             end
         }
         puts "end clean"
@@ -133,7 +144,7 @@ def __entry
 end
 
 configure do
-    set :port => 80
+    set :port => 8080
     set :public_folder, File.dirname(__FILE__) + '/pub'
 end
 
@@ -142,13 +153,15 @@ get '/getmessages/:id' do |id|
     chat.get_messages(id).to_json
 end
 
-get '/broadcast/:id/:lat/:lon/:message' do |id, lat, lon, message|
-    chat.broadcast(id, lat, lon, message, Time.now)
+post '/broadcast/:id/:lat/:lon/:message' do |id, lat, lon, message|
+    chat.broadcast(id, lat.to_f, lon.to_f, message, Time.now)
 end
 
-get '/connect/:name/:lat/:long' do |name, latitude, longitude|
+post '/connect/:name/:lat/:long' do |name, latitude, longitude|
     idToken = Digest::SHA256.new.hexdigest "#{name}#{Time.now}"
-    e,m = chat.connect(idToken, name, latitude, longitude)
+    puts "idtoken"
+    e,m = chat.connect(idToken, name, latitude.to_f, longitude.to_f)
+    puts "what"
 
     if e != 0 
         puts m 
@@ -158,8 +171,8 @@ get '/connect/:name/:lat/:long' do |name, latitude, longitude|
     return { status: 'OK', token: idToken }.to_json
 end
 
-get '/update_gpos/:id/:lat/:long' do |id, lat, lon|
-    chat.update_gpos(id, lat, lon)
+post '/update_gpos/:id/:lat/:long' do |id, lat, lon|
+    chat.update_gpos(id, lat.to_f, lon.to_f)
 end
 
 __entry

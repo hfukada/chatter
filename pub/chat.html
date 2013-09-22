@@ -2,16 +2,16 @@
     <script type="text/javascript">
         $(function () {
             $('#Send').on('click', function () {
-                //$('#Chatbox').append($('#Sendbox').val()+"\n");
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    $.post('//localhost/broadcast/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude + '/' + $('#Sendbox').val(), function(content) {
-                        alert(content);
+                    $.post('/broadcast/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude + '/' + $('#Sendbox').val(), function(content) {
                     });
                 });
             });
         });
         window.setInterval(function(){
-            $.get('//localhost/getmessages/' + document.idToken, function(content) {
+            $.get('/getmessages/' + document.idToken, function(content) {
+                var result = $.parseJSON(content);
+                $('#Chatbox').append(result);
                 //alert(content);
             });
         }, 1000);

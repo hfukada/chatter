@@ -60,7 +60,7 @@
           $('#goform').submit(function(e) {
             e.preventDefault();
 
-            $.get('/connect/' + $('#goname').val() + '/' + location.coords.latitude + '/' + location.coords.longitude, function(content) {
+            $.post('/connect/' + $('#goname').val() + '/' + location.coords.latitude + '/' + location.coords.longitude, function(content) {
               var result = $.parseJSON(content);
     
               if (result.status == 'OK') {
