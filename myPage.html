@@ -19,14 +19,15 @@
     <script type="text/javascript">
         $(function () {
             $('#Send').on('click', function () {
-                $('#Chatbox').append($('#Sendbox').val()+"\n");
-                $.post('//localhost/connect/' + $('#goname').val() + '/' + location.coords.latitude + '/' + location.coords.longitude, function(content) {
-                alert(content);
-            });
+                //$('#Chatbox').append($('#Sendbox').val()+"\n");
+                $.post('//localhost/broadcast/' + $('#goname').val() + '/' + location.coords.latitude + '/' + location.coords.longitude + '/' + $('#Sendbox').val(), function(content) {
+                    alert(content);
+                });
             });
         });
-            
-
+        window.setInterval(function(){
+            $.get('//localhost/getmessages/'gt:id' do |id|
+        }, 1000);
     </script>
 	</head>
 

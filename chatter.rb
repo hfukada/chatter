@@ -36,10 +36,10 @@ class Chatter
 
     def get_messages(target)
         coll = @db.collection('msg_queue')
-        messages = coll.find({'_id'=>target})
-        coll.remove({'_id' => target})
-        user = @db.collection('users').find({ '_id' => target})
-        @db.collection('users').update({'_id' => user['_id']},{'exp_time' => Time.now.to_i + 300}) 
+        messages = coll.find({'user'=>target})
+        coll.remove({'user' => target})
+        user = @db.collection('users').find({ 'user' => target})
+        @db.collection('users').update({'user' => user['user']},{'exp_time' => Time.now.to_i + 300}) 
         messages
     end
 
@@ -109,15 +109,16 @@ class Chatter
     end
 end
 
-chat = Chatter.new
-Thread.new{
-    loop do
-        chat.clean_users_collection
-        sleep 25
-    end
-}
+
 
 def __entry
+    chat = Chatter.new
+    Thread.new{
+        loop do
+            chat.clean_users_collection
+            sleep 25
+    end
+    }
     puts "STARTING GEOCHATTER"
 
     users = @db.collection('users')
@@ -153,3 +154,5 @@ end
 get '/update_gpos/:id/:lat/:long' do |id, lat, lon|
     chat.update_gpos(id, lat, lon)
 end
+
+_entry
