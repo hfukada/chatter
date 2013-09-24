@@ -1,37 +1,50 @@
 
-    <script type="text/javascript">
-        $(function () {
-            $('#Send').on('click', function () {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    $.post('/broadcast/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude + '/' + $('#Sendbox').val(), function(content) {
-                    });
-                });
-            });
+<script type="text/javascript">
+$(function () {
+  $('#Send').on('click', function () {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      $.post('/broadcast/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude + '/' + $('#Sendbox').val(), function(content) {});
+    });
+  });
+});
+$(function () {
+  $('#Sendbox').keyup(function () {
+    if (event.keyCode == 13){
+        $('#Send').click();
+    }
+  });
+});
+window.setInterval(function(){
+    navigator.geolocation.getCurrentPosition(function(position) {
+      $.get('/getmessages/' + document.idToken + '/' + position.coords.latitude + '/' + position.coords.longitude, function(content) {
+        //alert(content);
+        result = $.parseJSON(content);
+        for(var id in result){
+          var msg = result[id];
+          msg['from'] + msg['msg']
+          
+          $('#Chatbox').append(msg['from'] + ': '  + msg['msg']);
+        }
+        //alert(content);
         });
-        window.setInterval(function(){
-            $.get('/getmessages/' + document.idToken, function(content) {
-                var result = $.parseJSON(content);
-                $('#Chatbox').append(result);
-                //alert(content);
-            });
-        }, 1000);
-    </script>
-	</head>
+      });
+    }, 1000);
+</script>
+</head>
+<body class="wholePage"> 
+<h1 class="center"> Chatter for area </h1>
+<div id="container" class="rounded">
+  <div class="preContainer">
+    <pre id="Chatbox" class="preStyle"></pre>
+  </div>
+  <div class="input-group" id="input-div" >
+    <form name="chatbox">
+      <input id="Sendbox" type="text" class="input-block-level form-control, inputBox" placeholder="Text">
+      <button id="Send" class="btn btn-large btn-primary inputButton" type="button">Send</button>
+    </form>
+  </div>
 
-    <body class="wholePage"> 
-    <h1 class="center"> Chatter for area </h1>
-        <div id="container" class="rounded">
-            <div class="preContainer">
-			<pre id="Chatbox" class="preStyle"></pre>
-            </div>
-            <div class="input-group" id="input-div" >
-                <form name="chatbox">
-                    <input id="Sendbox" type="text" class="input-block-level form-control, inputBox" placeholder="Text">
-                    <button id="Send" class="btn btn-large btn-primary inputButton" type="button">Send</button>
-                </form>
-            </div>
-
-            <script src="//code.jquery.com/jquery.js"></script>
-            <!-- Include all compiled plugins (below), or include individual files as needed -->
-            <script src="js/bootstrap.min.js"></script>
-        </div>
+  <script src="//code.jquery.com/jquery.js"></script>
+  <!-- Include all compiled plugins (below), or include individual files as needed -->
+  <script src="js/bootstrap.min.js"></script>
+</div>

@@ -68,7 +68,9 @@
                 $.get('/chat.html', function(content) {
                   $('#content').html(content);
                 });
-              }
+                } else {
+                  alert("That nickname is already in use, please try again");
+                }
             });
           });
         });
